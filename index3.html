@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee - Manage Orders</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background-color: #28a745;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .order-item {
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+        }
+        .btn {
+            padding: 10px 15px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .btn.accept {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn.cancel {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn.finished {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn.failure {
+            background-color: #ff851b;
+            color: white;
+        }
+        .previous-orders {
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+        .clear {
+            margin-top: 20px;
+            background-color: #dc3545;
+            color: white;
+            padding: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px;
+                padding: 15px;
+            }
+            .btn {
+                padding: 8px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h3>Employee #1 - Manage Orders</h3> <!-- Change #1 for each employee -->
+    </div>
+
+    <div id="ordersContainer"></div>
+
+    <div class="previous-orders">
+        <h4>Previous Orders</h4>
+        <div id="previousOrdersContainer"></div>
+        <button class="clear" onclick="clearPreviousOrders()">Clear Previous Orders</button>
+    </div>
+</div>
+
+<script>
+    const employeeId = 2; // Change this to 1, 2, or 3 for each employee
+
+    // Request notification permission
+    Notification.requestPermission().then((result) => {
+        if (result === 'granted') {
+            console.log('Notification permission granted.');
+        }
+    });
+
+    function loadOrders() {
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+        const ordersContainer = document.getElementById('ordersContainer');
+        ordersContainer.innerHTML = '';
+
+        if (orders.length === 0) {
+            ordersContainer.innerHTML = '<p>No current orders available.</p>';
+            return;
+        }
+
+        orders.forEach((order, index) => {
+            if (order.status === 'Pending' && order.employees[employeeId] === 'Pending') {
+                ordersContainer.innerHTML += `
+                    <div class="order-item">
+                        <p><strong>Order #${index + 1}:</strong> ${order.details}</p>
+                        <button class="btn accept" onclick="acceptOrder(${index})">Accept</button>
+                        <button class="btn cancel" onclick="cancelOrder(${index})">Cancel</button>
+                    </div>
+                `;
+            } else if (order.employees[employeeId] === 'Accepted') {
+                ordersContainer.innerHTML += `
+                    <div class="order-item">
+                        <p><strong>Order #${index + 1}:</strong> ${order.details}</p>
+                        <p>Status: Accepted</p>
+                        <button class="btn finished" onclick="markOrderFinished(${index})">Mark as Finished</button>
+                        <button class="btn failure" onclick="reportFailure(${index})">Report Failure</button>
+                    </div>
+                `;
+            }
+        });
+        displayPreviousOrders();
+    }
+
+    function acceptOrder(index) {
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+        for (let emp in orders[index].employees) {
+            orders[index].employees[emp] = emp == employeeId ? 'Accepted' : 'Cancelled';
+        }
+        orders[index].status = 'Accepted';
+        orders[index].actionDate = new Date().toLocaleString();
+        localStorage.setItem('orders', JSON.stringify(orders));
+        loadOrders();
+    }
+
+    function cancelOrder(index) {
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+        orders[index].employees[employeeId] = 'Cancelled';
+        orders[index].status = checkOrderStatus(orders[index]);
+        orders[index].actionDate = new Date().toLocaleString();
+        localStorage.setItem('orders', JSON.stringify(orders));
+        loadOrders();
+    }
+
+    function markOrderFinished(index) {
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+        orders[index].status = 'Finished';
+        orders[index].actionDate = new Date().toLocaleString();
+        localStorage.setItem('orders', JSON.stringify(orders));
+        alert('Order marked as finished. Manager will be notified.');
+        loadOrders();
+    }
+
+    function reportFailure(index) {
+        let failureReason = prompt("Please provide the reason for failure:");
+        if (failureReason) {
+            let orders = JSON.parse(localStorage.getItem('orders')) || [];
+            orders[index].status = 'Failed';
+            orders[index].failureReason = failureReason;
+            orders[index].actionDate = new Date().toLocaleString();
+            localStorage.setItem('orders', JSON.stringify(orders));
+            alert('Order marked as failed. Manager will be notified with reason.');
+            loadOrders();
+        }
+    }
+
+    function checkOrderStatus(order) {
+        if (Object.values(order.employees).every(status => status === 'Cancelled')) {
+            return 'Cancelled';
+        } else if (Object.values(order.employees).includes('Accepted')) {
+            return 'Accepted';
+        }
+        return 'Pending';
+    }
+
+    function displayPreviousOrders() {
+        let orders = JSON.parse(localStorage.getItem('orders')) || [];
+        const previousOrdersContainer = document.getElementById('previousOrdersContainer');
+        previousOrdersContainer.innerHTML = '';
+
+        orders.forEach((order, index) => {
+            if (order.status !== 'Pending') {
+                previousOrdersContainer.innerHTML += `
+                    <div class="order-item">
+                        <p><strong>Order #${index + 1}:</strong> ${order.details}</p>
+                        <p>Status: ${order.status} on ${order.actionDate}</p>
+                        ${order.status === 'Failed' ? `<p>Reason: ${order.failureReason}</p>` : ''}
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function clearPreviousOrders() {
+        if (confirm('Are you sure you want to clear all previous orders?')) {
+            localStorage.removeItem('orders');
+            loadOrders();
+        }
+    }
+
+    // Listen for changes in localStorage
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'orders') {
+            loadOrders(); // Refresh the order list if orders are updated
+            showNotification(); // Show notification if there's a new order
+        }
+    });
+
+    // Function to show notification
+    function showNotification() {
+        const orders = JSON.parse(localStorage.getItem('orders')) || [];
+        const newOrderCount = orders.filter(order => order.status === 'Pending').length;
+
+        if (newOrderCount > 0) {
+            const notificationTitle = "New Order Received!";
+            const notificationBody = `You have ${newOrderCount} new orders from the manager.`;
+
+            if (Notification.permission === 'granted') {
+                new Notification(notificationTitle, { body: notificationBody });
+            }
+        }
+    }
+
+    window.onload = function() {
+        loadOrders();
+    };
+</script>
+
+</body>
+</html>
+
+

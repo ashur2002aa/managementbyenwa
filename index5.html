@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup - Previous Orders</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .btn {
+            padding: 10px 15px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-danger {
+            background-color: #dc3545; /* Red color for danger button */
+        }
+        .order-item {
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+        }
+        .order-status {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        @media (max-width: 600px) {
+            .container {
+                margin: 20px;
+                padding: 15px;
+            }
+            .btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainContainer" style="display: none;">
+    <div class="header">
+        <h3>Backup - Previous Orders</h3>
+    </div>
+    
+    <div id="previousOrdersContainer"></div>
+    
+    <button class="btn" onclick="sendBackupToManager()">Send Backup to Manager</button>
+    <button class="btn btn-danger" onclick="clearAllOrders()">Clear All Orders</button>
+</div>
+
+<script>
+    const correctPassword = "ashur55";
+
+    function promptForPassword() {
+        const password = prompt("Please enter the password to access this page:");
+        if (password === correctPassword) {
+            document.getElementById('mainContainer').style.display = 'block';
+            loadPreviousOrders(); // Load orders after accessing the page
+        } else {
+            alert('Incorrect password. Access denied.');
+            window.location.href = "about:blank"; // Redirect to a blank page
+        }
+    }
+
+    function loadPreviousOrders() {
+        const orders = JSON.parse(localStorage.getItem('orders')) || [];
+        const previousOrdersContainer = document.getElementById('previousOrdersContainer');
+        previousOrdersContainer.innerHTML = '';
+
+        if (orders.length === 0) {
+            previousOrdersContainer.innerHTML = '<p>No previous orders available.</p>';
+            return;
+        }
+
+        orders.forEach((order, index) => {
+            if (order.status === 'Finished' || order.status === 'Failed') {
+                const employeeStatus = Object.keys(order.employees)
+                    .map(empId => `Employee ${empId}: ${order.employees[empId]}`)
+                    .join(', ');
+
+                previousOrdersContainer.innerHTML += `
+                    <div class="order-item">
+                        <p><strong>Order #${index + 1}:</strong> ${order.details}</p>
+                        <p class="order-status">Status: ${order.status}</p>
+                        <p>Processed on: ${order.actionDate || 'N/A'}</p>
+                        <p>${employeeStatus}</p>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    function sendBackupToManager() {
+        const orders = JSON.parse(localStorage.getItem('orders')) || [];
+        // Filter for finished and failed orders to send to the manager
+        const backupOrders = orders.filter(order => order.status === 'Finished' || order.status === 'Failed');
+        localStorage.setItem('backupOrders', JSON.stringify(backupOrders));
+        alert('Backup sent to Manager!');
+    }
+
+    function clearAllOrders() {
+        if (confirm("Are you sure you want to clear all orders? This action cannot be undone.")) {
+            localStorage.removeItem('orders'); // Clear orders from localStorage
+            document.getElementById('previousOrdersContainer').innerHTML = '<p>No previous orders available.</p>'; // Update UI
+            alert('All orders have been cleared.');
+        }
+    }
+
+    window.onload = function() {
+        promptForPassword();
+    };
+</script>
+
+</body>
+</html>
+
